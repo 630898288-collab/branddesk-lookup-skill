@@ -53,8 +53,23 @@ Agent 会自动调用本 Skill 检索并把链接返回给你。也可以直接�
 | --- | --- |
 | `SKILL.md` | Skill 定义：触发条件、工作流、返回规范（Agent 读它来决定怎么用） |
 | `scripts/lookup.mjs` | 查询脚本：从公开 `resources.json` 检索，分词模糊匹配，返回资料与链接（零依赖） |
+| `scripts/update.mjs` | 自更新：静默检查 GitHub 新版本、缓存、下载并安全覆盖（保留本地配置） |
+| `VERSION` | 当前版本号；维护者每次改包都要调高，用户端才会收到更新提醒 |
 | `data/resources.json` | 随包快照：公开资料索引的最新快照，离线时兜底 |
-| `.env.example` | 可选配置模板：仅管理员更换数据源仓库时才可能需要，一般不用管 |
+| `.env.example` | 可选配置模板：仅管理员更换数据源 / 更新源仓库时才可能需要，一般不用管 |
+
+## 自动更新
+
+每次运行都会静默检查 GitHub 上是否有新版本（默认 12 小时一次，带本地缓存；网络失败自动跳过、不打扰）。发现新版本时 Agent 会先询问你，同意后才下载覆盖，且自动保留 `.env` 等本地文件。
+
+```bash
+node scripts/lookup.mjs --check-update      # 查看是否有新版本
+node scripts/lookup.mjs --self-update       # 确认后升级（Agent 会先问你）
+node scripts/lookup.mjs --dismiss-update    # 暂不升级，同一版本不再提醒
+node scripts/lookup.mjs --skip-update-check "查询词"  # 本次跳过检查
+```
+
+维护者须知：改动包内文件后，把根目录 `VERSION` 语义化版本号往上调（如 `1.0.0` → `1.1.0`），并把新版本推到 GitHub 仓库，用户端下次运行即可收到提醒。
 
 ## 边界
 
