@@ -11,6 +11,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
+import { checkForUpdate, applyUpdate, dismissUpdate, formatUpdate } from './update.mjs'
 
 const SKILL_DIR = dirname(dirname(fileURLToPath(import.meta.url)))
 const REPO = '630898288-collab/branddesk-lookup-skill'
@@ -111,10 +112,11 @@ function scoreRow(row, queryTokens) {
   return score
 }
 
-async function main() {
+async function main(updateState) {
   const args = parseArgs(process.argv.slice(2))
   if (args.help) {
     console.log('用法: node lookup.mjs "自然语言需求或关键词" | --all | --category 分类名 [--json]')
+    console.log('更新: node lookup.mjs --check-update | --self-update | --dismiss-update | --skip-update-check')
     return
   }
   if (!args.all && !args.query && !args.category) {
@@ -147,7 +149,7 @@ async function main() {
 
   const stale = loaded.from === 'local' ? '（离线快照，数据可能略旧）' : ''
   if (args.json) {
-    console.log(JSON.stringify({ count: hits.length, from: loaded.from, generatedAt: loaded.data.generatedAt, sourceUrl: RAW_URL, records: hits }, null, 2))
+    console.log(JSON.stringify({ count: hits.length, from: loaded.from, generatedAt: loaded.data.generatedAt, sourceUrl: RAW_URL, update: updateState, records: hits }, null, 2))
     return
   }
   if (!hits.length) {
@@ -165,4 +167,28 @@ async function main() {
   console.log(`数据源：BrandDesk 公开资料索引（每日同步） ${RAW_URL}`)
 }
 
-main()
+/* 第零步：运行时检查本 Skill 有没有新版本（见 SKILL.md）。
+ * 只提醒、绝不自动安装；网络失败静默降级，不阻断查询。 */
+const argv = process.argv.slice(2)
+const hasFlag = (f) => argv.includes(f)
+let updateState = null
+if (hasFlag('--self-update')) {
+  const r = await applyUpdate()
+  console.log(JSON.stringify(r, null, 2))
+  process.exit(r.ok ? 0 : 1)
+} else if (hasFlag('--dismiss-update')) {
+  const r = await dismissUpdate()
+  console.log(JSON.stringify(r, null, 2))
+  process.exit(r.ok ? 0 : 1)
+} else {
+  if (!hasFlag('--skip-update-check')) {
+    updateState = formatUpdate(await checkForUpdate({ force: hasFlag('--check-update') || hasFlag('--force') }))
+    if (updateState.available) console.error(`\n[Skill 更新] ${updateState.message}\n`)
+  }
+  // 只想查版本、不查询资料：直接输出结构化结果给 Agent
+  if (hasFlag('--check-update') && !hasFlag('--all') && !hasFlag('--category') && !argv.some((a) => !a.startsWith('--'))) {
+    console.log(JSON.stringify(updateState, null, 2))
+    process.exit(0)
+  }
+  await main(updateState)
+}
