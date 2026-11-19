@@ -60,14 +60,18 @@ function parseArgs(argv) {
 function buildRequestUrl({ demand, submitter, contact, source }) {
   let u
   try { u = new URL(REQUEST_FORM_URL) } catch { throw new Error('资料需求表单地址无效') }
-  const prefill = {
-    '需求描述': demand || '',
-    '提交人': submitter || '',
-    '联系方式': contact || '',
-    '来源': source || '查询Skill',
-  }
-  for (const [k, v] of Object.entries(prefill)) {
-    if (v) u.searchParams.set(`prefill_${k}`, String(v))
+  // 飞书表单按「表单字段标题」匹配 prefill 键。工单表单已改为中英双语标题，
+  // 同时兼容旧的纯中文表名字段名（例如通过 BRANDDESK_REQUEST_FORM 覆盖的其它表单）。
+  // 两个键都带上：与表单字段标题不匹配的键会被飞书忽略，互不冲突。
+  const prefill = [
+    { value: demand || '', keys: ['需求描述', '需求描述 / What do you need?'] },
+    { value: submitter || '', keys: ['提交人', '提交人 / Your name'] },
+    { value: contact || '', keys: ['联系方式', '联系方式 / Contact'] },
+    { value: source || '查询Skill', keys: ['来源', '来源 / Source'] },
+  ]
+  for (const field of prefill) {
+    if (!field.value) continue
+    for (const k of field.keys) u.searchParams.set(`prefill_${k}`, String(field.value))
   }
   return u.toString()
 }
