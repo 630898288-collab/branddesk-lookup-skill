@@ -8,6 +8,7 @@
 //   node scripts/lookup.mjs --all                            # 列出全部资料
 //   node scripts/lookup.mjs --category "飞利浦品牌授权"        # 按分类筛选
 //   node scripts/lookup.mjs "授权申请" --json                 # 机器可读输出
+//   node scripts/lookup.mjs request --demand "想要的资料" --submitter "姓名" --contact "联系方式"  # 生成资料需求表单链接
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
@@ -33,18 +34,42 @@ const REMOTE_SOURCES = [
 const LOCAL_SNAPSHOT = join(SKILL_DIR, INDEX_PATH)
 const RUNTIME_CACHE = join(SKILL_DIR, '.cache', 'resources.json')
 const FETCH_TIMEOUT_MS = 7000
+// 资料需求工单的飞书公开表单（公网匿名可填，非密钥，可公开分发）；可用环境变量覆盖以适配换表。
+const REQUEST_FORM_URL = process.env.BRANDDESK_REQUEST_FORM ||
+  'https://deerma66.feishu.cn/share/base/shrcn81hKKr4w4hLBiSKbdhZOpe'
 
 function parseArgs(argv) {
-  const out = { query: '', category: '', all: false, json: false }
+  const out = { query: '', category: '', all: false, json: false, submitter: '', contact: '', source: '', demand: '', command: '' }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === '--all') out.all = true
     else if (a === '--json') out.json = true
     else if (a === '--category') out.category = (argv[++i] || '').trim()
+    else if (a === '--submitter') out.submitter = (argv[++i] || '').trim()
+    else if (a === '--contact') out.contact = (argv[++i] || '').trim()
+    else if (a === '--source') out.source = (argv[++i] || '').trim()
+    else if (a === '--demand') out.demand = (argv[++i] || '').trim()
     else if (a === '--help' || a === '-h') out.help = true
+    else if (a === 'request') out.command = 'request'
     else if (!a.startsWith('--')) out.query = (out.query + ' ' + a).trim()
   }
   return out
+}
+
+// 生成飞书表单预填链接：需求描述/提交人/联系方式/来源 预填，打开后用户点一次「提交」即写入工单表。
+function buildRequestUrl({ demand, submitter, contact, source }) {
+  let u
+  try { u = new URL(REQUEST_FORM_URL) } catch { throw new Error('资料需求表单地址无效') }
+  const prefill = {
+    '需求描述': demand || '',
+    '提交人': submitter || '',
+    '联系方式': contact || '',
+    '来源': source || '查询Skill',
+  }
+  for (const [k, v] of Object.entries(prefill)) {
+    if (v) u.searchParams.set(`prefill_${k}`, String(v))
+  }
+  return u.toString()
 }
 
 // 依次尝试远端数据源；任一成功即解析 JSON 并写运行时缓存。全失败返回 null。
@@ -116,7 +141,22 @@ async function main(updateState) {
   const args = parseArgs(process.argv.slice(2))
   if (args.help) {
     console.log('用法: node lookup.mjs "自然语言需求或关键词" | --all | --category 分类名 [--json]')
+    console.log('需求: node lookup.mjs request --demand "想要的资料" [--submitter 姓名] [--contact 联系方式] [--source 来源] [--json]')
     console.log('更新: node lookup.mjs --check-update | --self-update | --dismiss-update | --skip-update-check')
+    return
+  }
+  // 资料需求：查无结果时生成预填表单链接，用户点开确认后一次点击提交工单
+  if (args.command === 'request') {
+    const demand = (args.demand || args.query || '').trim()
+    if (!demand) { console.error('请提供 --demand 需求描述'); process.exitCode = 2; return }
+    const url = buildRequestUrl({ demand, submitter: args.submitter, contact: args.contact, source: args.source || '查询Skill' })
+    if (args.json) {
+      console.log(JSON.stringify({ ok: true, demand, submitter: args.submitter || '', contact: args.contact || '', formUrl: url, hint: '请把该链接发给用户，请其核对内容后点击「提交」；Agent 不代为提交。' }, null, 2))
+    } else {
+      console.log('已生成资料需求表单链接（内容已预填，用户点开核对后点一次「提交」即可）：')
+      console.log(url)
+      console.log('\n请将此链接发给用户确认后自行提交；Agent 不代为提交。')
+    }
     return
   }
   if (!args.all && !args.query && !args.category) {
