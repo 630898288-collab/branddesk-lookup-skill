@@ -47,6 +47,14 @@ git clone https://github.com/630898288-collab/branddesk-lookup-skill.git ~/.work
 
 Agent 会自动调用本 Skill 检索并把链接返回给你。也可以直接问「XX 的链接在哪」「资料库里有没有 XX」。
 
+**资料查不到时**：经你同意、并留下称呼/联系方式后，Agent 会生成一条已预填好的「资料需求」表单链接，你点开核对、点一次「提交」即写入工单；后台每天同步并通知管理员补充。Agent 不会代你提交。也可直接调用：
+
+```bash
+node scripts/lookup.mjs request --demand "想要的资料" --submitter "你的称呼" --contact "邮箱（可选）" --json
+```
+
+表单地址可用环境变量 `BRANDDESK_REQUEST_FORM` 覆盖（换表时），默认为公开的飞书表单链接（非密钥）。
+
 ## 文件说明
 
 | 文件 | 作用 |
