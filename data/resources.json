@@ -1,8 +1,8 @@
 {
   "source": "BrandDesk 品牌资料工作台（公开索引）",
   "note": "仅含有效资料，每日同步；链接照实返回，内部网盘访问用户自有办法。",
-  "generatedAt": "2026-11-17T13:45:55.966Z",
-  "count": 64,
+  "generatedAt": "2026-11-19T01:33:01.271Z",
+  "count": 65,
   "records": [
     {
       "id": 7,
@@ -835,6 +835,19 @@
       "link": "https://pan.deerma.com/f/d074446b418c4314a415/",
       "description": "",
       "updatedAt": "2026-11-10"
+    },
+    {
+      "id": 80,
+      "title": "海外新品物料协作指引（中英文）",
+      "titleZh": "海外新品物料协作指引（中英文）",
+      "titleEn": "",
+      "category": "飞利浦培训资料",
+      "categoryZh": "飞利浦培训资料",
+      "categoryEn": "",
+      "form": "在线链接",
+      "link": "https://work-hub-50935.app.workbuddy.host/a/cab2ebd5-15a",
+      "description": "BU、MU 与中央市场部的海外新品物料协作指引，覆盖项目流程、部门职责、交付节点、产品等级与包材注意事项。支持中英文切换；分级清单中待确认内容已标注，适用于新品项目对齐和团队培训。",
+      "updatedAt": "2026-11-18"
     }
   ]
 }
